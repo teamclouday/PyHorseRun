@@ -13,9 +13,10 @@ try:
     import ctypes
     from ctypes import wintypes
     import msvcrt
-except ImportError:
-    import termios
-    import tty
+except Exception:
+    #import termios
+    #import tty
+    import curses
 
 # helper class to make os specific calls easier
 class OSEasyConsole:
@@ -23,6 +24,11 @@ class OSEasyConsole:
         if os.name == "nt":
             self.WinDll = ctypes.WinDLL("kernel32") # load kernel32.dll
             self.ConsoleHandler = self.WinDll.GetStdHandle(STD_OUTPUT_HANDLE) # get console standard handle
+        else:
+            self.stdscr = curses.initscr()
+            self.stdscr.nodelay(1) # do not wait for key press
+            curses.noecho() # turn on key echo
+            curses.cbreak() # react to key press immediately
 
     # a wrapper method
     def MoveCursor(self, pos=(0, 0)):
@@ -48,8 +54,7 @@ class OSEasyConsole:
             ci.visible = False
             self.WinDll.SetConsoleCursorInfo(self.ConsoleHandler, ctypes.byref(ci))
         else:
-            sys.stdout.write("\033[?25l") # code for hiding cursor in linux terminal
-            sys.stdout.flush()
+            curses.curs_set(False)
 
     # function to restore cursor after game stops
     def ShowCursor(self):
@@ -61,14 +66,14 @@ class OSEasyConsole:
             ci.visible = True
             self.WinDll.SetConsoleCursorInfo(self.ConsoleHandler, ctypes.byref(ci))
         else:
-            sys.stdout.write("\033[?25h") # code for hiding cursor in linux terminal
-            sys.stdout.flush()
+            curses.curs_set(True)
 
     def _WinMoveCursor(self, pos):
         self.WinDll.SetConsoleCursorPosition(self.ConsoleHandler, wintypes._COORD(pos[0], pos[1])) # make kernel32 c function call
 
     def _UnixMoveCursor(self, pos):
-        ...
+        print("\033[{0};{1}H".format(pos[1], pos[0]))
+        #self.stdscr.move(pos[1], pos[0])
 
     def _WinGetCh(self):
         if msvcrt.kbhit(): # if there's a keyboard message waiting for read
@@ -77,14 +82,12 @@ class OSEasyConsole:
             return None
 
     def _UnixGetCh(self):
-        previous_state = termios.tcgetattr(fd) # store previous state of console
-        tty.setcbreak(sys.stdin.fileno())
-        bytecode = None
         try:
-            bytecode = os.read(sys.stdin.fileno(), 3).decode() # read input 3 bytes into an integer and return it
-        finally:
-            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, previous_state) # restore console settings
-        return bytecode
+            c = self.stdscr.getkey()
+        except Exception:
+            return None # getch raise error if no key is pressed
+        else:
+            return c
 
 # class made for storing horse information
 class GameObjHorse:
@@ -117,7 +120,7 @@ class GameEngine:
         self.playable = True # variable to maintain the game loop
         self.render_buffer = []
         self.live_obstacles = [] # here stores all the live obstacles
-        self.time_tick = time.clock()
+        self.time_tick = time.process_time()
         self.sleep_interval = 0.1
 
     # get environment information
@@ -167,12 +170,12 @@ class GameEngine:
                 w = 0
             self.console_helper.MoveCursor((w, h))
             print(string)
-        
+
         # reset buffer
         self.render_buffer = []
         self.console_helper.MoveCursor((0, 0))
         time.sleep(self.sleep_interval)
-    
+
     # update by game logic
     def Update(self):
         # first update horse's feet animation
@@ -232,17 +235,21 @@ class GameEngine:
         self._MoveObstacle()
         if self.live_obstacles != [] and self.live_obstacles[0].right_most < 0:
             self.live_obstacles.pop(0) # remove the obstacle out from scene
-        
+
         # finally update the score
         self.score += 1
         self.render_buffer.append([(self.console_W-13, 0), "Score = {0:04d}".format(self.score)])
 
         # update the time ticks
         # every 5 seconds, speed up the game
-        if time.clock() - self.time_tick > 5.0:
-            self.time_tick = time.clock()
+        if time.process_time() - self.time_tick > 5.0:
+            self.time_tick = time.process_time()
             self.sleep_interval /= 10
             self.sleep_interval *= 9
+
+        # if using curses, then need to draw the ground every frame
+        if os.name != "nt":
+            self.render_buffer.append([(0, self.console_H-1), self.console_W*"="])
 
     # helper function to move horse up or down
     def _MoveHorseUpDown(self, delta=1):
@@ -306,6 +313,10 @@ class GameEngine:
     def Quit(self):
         self.console_helper.ShowCursor() # restore cursor
         self.console_helper.MoveCursor((0, self.console_H))
+        if os.name != "nt":
+            curses.nocbreak()
+            curses.echo()
+            curses.endwin()
 
 if __name__ == "__main__":
     # get user defined game difficulty:
