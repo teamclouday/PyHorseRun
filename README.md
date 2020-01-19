@@ -15,3 +15,7 @@ Control is Easy: Press Space to jump, Press Q to quit
 The game idea is inspired from the dinosaur game in Chrome  
 System specific codes (like move cursor, hide cursor) are learnt from the Internet  
 All game logics and all other codes are written by myself  
+
+------
+
+The game fps (also affects the speed) starts at 10, increase by 2 every 5 seconds, and is limited to 40 max
