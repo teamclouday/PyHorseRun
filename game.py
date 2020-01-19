@@ -6,6 +6,8 @@ import time
 import random
 import shutil
 
+FRAME_PER_SECOND = 10 # initial fps defined for game
+
 STD_OUTPUT_HANDLE = -11 # the handle value defined in windows kernel.dll
 
 # import os specific libraries
@@ -119,7 +121,7 @@ class GameEngine:
         self.render_buffer = []
         self.live_obstacles = [] # here stores all the live obstacles
         self.time_tick = time.process_time()
-        self.sleep_interval = 0.1
+        self.speed_tick = time.process_time()
 
     # get environment information
     def SetUpEnv(self):
@@ -169,10 +171,14 @@ class GameEngine:
             self.console_helper.MoveCursor((w, h))
             print(string)
 
+        if self.render_buffer == []: return
+
         # reset buffer
         self.render_buffer = []
         self.console_helper.MoveCursor((0, 0))
-        time.sleep(self.sleep_interval)
+        delta = time.process_time() - self.time_tick
+        self.time_tick = time.process_time()
+        time.sleep(1 / FRAME_PER_SECOND - delta)
 
     # update by game logic
     def Update(self):
@@ -240,10 +246,11 @@ class GameEngine:
 
         # update the time ticks
         # every 5 seconds, speed up the game
-        if time.process_time() - self.time_tick > 5.0:
-            self.time_tick = time.process_time()
-            self.sleep_interval /= 10
-            self.sleep_interval *= 9
+        # also limit the max FPS
+        if FRAME_PER_SECOND < 40:
+            if time.process_time() - self.speed_tick > 5:
+                self.speed_tick = time.process_time()
+                FRAME_PER_SECOND += 2
 
         # if using curses, then need to draw the ground every frame
         if os.name != "nt":
