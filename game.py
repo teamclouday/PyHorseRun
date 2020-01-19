@@ -181,9 +181,13 @@ class GameEngine:
             self.horse.left_left = False # if in air, the feet should not move and point to right
         if self.horse.on_ground:
             if self.horse.left_left:
+                self.render_buffer.append([(0, self.horse.height-2), "\\  [=]"])
+                self.render_buffer.append([(0, self.horse.height-1), " [--] "])
                 self.render_buffer.append([(0, self.horse.height), " \\  / "])
                 self.horse.left_left = False
             else:
+                self.render_buffer.append([(0, self.horse.height-2), "\\  [=]"])
+                self.render_buffer.append([(0, self.horse.height-1), " [--] "])
                 self.render_buffer.append([(0, self.horse.height), " /  \\ "])
                 self.horse.left_left = True
 
@@ -218,6 +222,12 @@ class GameEngine:
             ob = GameObjObstacle(right_most=self.console_W-2, size=random.randint(1, 3))
             self.live_obstacles.append(ob)
 
+        # check for any hit
+        if self._AnyHit():
+            self.playable = False
+            time.sleep(1)
+            return
+
         # now update obstacles
         self._MoveObstacle()
         if self.live_obstacles != [] and self.live_obstacles[0].right_most < 0:
@@ -234,6 +244,7 @@ class GameEngine:
             self.sleep_interval /= 10
             self.sleep_interval *= 9
 
+    # helper function to move horse up or down
     def _MoveHorseUpDown(self, delta=1):
         if delta == 0: return
         elif delta > 0: # move up
@@ -249,6 +260,7 @@ class GameEngine:
             self.render_buffer.append([(0, self.horse.height-1), " [--] "])
             self.render_buffer.append([(0, self.horse.height-2), "\\  [=]"])
 
+    # helper function to move each obstacle 1 distance left
     def _MoveObstacle(self):
         for ob in self.live_obstacles:
             if ob.size == 1:
@@ -263,6 +275,23 @@ class GameEngine:
             ob.right_most -= 1
             ob.left_most -= 1
 
+    # check for horse hit with obstacles
+    def _AnyHit(self):
+        if len(self.live_obstacles) >= 1:
+            # first check with the nearest obstacle
+            ob = self.live_obstacles[0]
+            h = self.console_H - 2 - self.horse.height
+            if h <= ob.size:
+                if ob.left_most <= (4-h):
+                    return True
+            if len(self.live_obstacles) >= 2:
+                # next check with second nearest obstacle
+                ob = self.live_obstacles[1]
+                if h <= ob.size:
+                    if ob.left_most <= (4-h):
+                        return True
+        return False
+
     # handle keyboard input
     def PollKeyEvents(self):
         ch = self.console_helper.GetChar()
@@ -273,6 +302,7 @@ class GameEngine:
         elif ch == self.key_jump:
             self.horse.jump = True
 
+    # do the clean up and restore environment
     def Quit(self):
         self.console_helper.ShowCursor() # restore cursor
         self.console_helper.MoveCursor((0, self.console_H))
