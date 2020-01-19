@@ -22,6 +22,7 @@ except Exception:
 class OSEasyConsole:
     def __init__(self):
         if os.name == "nt":
+            global STD_OUTPUT_HANDLE
             self.WinDll = ctypes.WinDLL("kernel32") # load kernel32.dll
             self.ConsoleHandler = self.WinDll.GetStdHandle(STD_OUTPUT_HANDLE) # get console standard handle
         else:
@@ -162,6 +163,8 @@ class GameEngine:
     # render the scene to the console
     # or simply update the scene
     def Render(self):
+        # reference the var stored in global
+        global FRAME_PER_SECOND
         for task in self.render_buffer:
             w, h = task[0]
             string = task[1]
@@ -247,6 +250,7 @@ class GameEngine:
         # update the time ticks
         # every 5 seconds, speed up the game
         # also limit the max FPS
+        global FRAME_PER_SECOND
         if FRAME_PER_SECOND < 40:
             if time.process_time() - self.speed_tick > 5:
                 self.speed_tick = time.process_time()
