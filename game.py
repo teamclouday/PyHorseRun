@@ -94,19 +94,20 @@ class GameObjHorse:
         self.on_ground = True # is the horse on ground ?
         self.jump = False # is the horse going to jump ?
         self.vel = 0 # vertical velocity, positive is up, negative is down
+        self.on_top_count = 0 # count frames for horse to stay in top air
 
 # class made for storing obstacles information
 class GameObjObstacle:
     def __init__(self, right_most, size=1):
         self.right_most = right_most
         if size == 1:
-            self.height = 1
+            self.size = 1
             self.left_most = right_most - 1
         elif size == 2:
-            self.height = 2
+            self.size = 2
             self.left_most = right_most - 3
         else: # size == 3
-            self.height = 2
+            self.size = 3
             self.left_most = right_most - 5
 
 # class for game engine
@@ -116,6 +117,8 @@ class GameEngine:
         self.playable = True # variable to maintain the game loop
         self.render_buffer = []
         self.live_obstacles = [] # here stores all the live obstacles
+        self.time_tick = time.clock()
+        self.sleep_interval = 0.1
 
     # get environment information
     def SetUpEnv(self):
@@ -129,7 +132,7 @@ class GameEngine:
         if self.console_H < 8:
             print("Please increase the console height and try again")
             sys.exit(1)
-        if self.console_W < 30:
+        if self.console_W < 40:
             print("Please increase the console width and try again")
             sys.exit(1)
         # setup os specific keys
@@ -150,26 +153,32 @@ class GameEngine:
         self.horse = GameObjHorse(self.console_H-2)
         # init game score
         self.score = 0
-        self.console_helper.MoveCursor((self.console_W-17, 0))
-        print("Score = {0:08d}".format(self.score))
+        self.console_helper.MoveCursor((self.console_W-13, 0))
+        print("Score = {0:04d}".format(self.score))
 
     # render the scene to the console
     # or simply update the scene
     def Render(self):
         for task in self.render_buffer:
-            self.console_helper.MoveCursor(task[0])
-            print(task[1])
+            w, h = task[0]
+            string = task[1]
+            if w < 0:
+                string = string[abs(w):]
+                w = 0
+            self.console_helper.MoveCursor((w, h))
+            print(string)
         
         # reset buffer
         self.render_buffer = []
-        time.sleep(0.1)
+        self.console_helper.MoveCursor((0, 0))
+        time.sleep(self.sleep_interval)
     
     # update by game logic
     def Update(self):
-        # first move the horse's feet
+        # first update horse's feet animation
         if not self.horse.on_ground and self.horse.left_left:
             self.render_buffer.append([(0, self.horse.height), " \\  / "])
-            self.horse.left_left = False
+            self.horse.left_left = False # if in air, the feet should not move and point to right
         if self.horse.on_ground:
             if self.horse.left_left:
                 self.render_buffer.append([(0, self.horse.height), " \\  / "])
@@ -177,32 +186,57 @@ class GameEngine:
             else:
                 self.render_buffer.append([(0, self.horse.height), " /  \\ "])
                 self.horse.left_left = True
+
         # check if the horse is going to jump
         if self.horse.on_ground and self.horse.jump:
             self.horse.jump = False
             self.horse.on_ground = False
-            self.vel = 3 # give and initial velocity
+            self.vel = 5 # give and initial velocity
+
         # now check conditions when in the air
         if not self.horse.on_ground:
-            if self.vel < 0:
+            # jump => 5 => 4 => 3 => 2 => 1 => 0 => -1 => -2 => -3 => -4 => back to ground
+            if self.vel == 0:
+                self.horse.on_top_count += 1
+                if self.horse.on_top_count > 5:
+                    self.vel -= 1
+                    self.horse.on_top_count = 0
+                    self._MoveHorseUpDown(delta=-1)
+            elif self.vel < 0:
                 self._MoveHorseUpDown(delta=-1)
                 if self.vel == -4:
-                    self.horse.on_ground = True # if vel is -3, then the horse is back to the ground
+                    self.horse.on_ground = True # if vel is -4, then the horse is back to the ground
                     self.vel = 0
                 else:
                     self.vel -= 1
             else:
                 self._MoveHorseUpDown(delta=1)
                 self.vel -= 1
-        # now check the obstacles
-        
 
+        # now check the obstacles
+        if self.live_obstacles == [] or (self.console_W - self.live_obstacles[-1].right_most > random.randint(10+4*(4-self.diff), 15+6*(4-self.diff))):
+            ob = GameObjObstacle(right_most=self.console_W-2, size=random.randint(1, 3))
+            self.live_obstacles.append(ob)
+
+        # now update obstacles
+        self._MoveObstacle()
+        if self.live_obstacles != [] and self.live_obstacles[0].right_most < 0:
+            self.live_obstacles.pop(0) # remove the obstacle out from scene
+        
         # finally update the score
         self.score += 1
-        self.render_buffer.append([(self.console_W-17, 0), "Score = {0:08d}".format(self.score)])
+        self.render_buffer.append([(self.console_W-13, 0), "Score = {0:04d}".format(self.score)])
+
+        # update the time ticks
+        # every 5 seconds, speed up the game
+        if time.clock() - self.time_tick > 5.0:
+            self.time_tick = time.clock()
+            self.sleep_interval /= 10
+            self.sleep_interval *= 9
 
     def _MoveHorseUpDown(self, delta=1):
-        if delta > 0: # move up
+        if delta == 0: return
+        elif delta > 0: # move up
             self.render_buffer.append([(0, self.horse.height), 6*" "])
             self.horse.height -= 1
             self.render_buffer.append([(0, self.horse.height), " \\  /"])
@@ -214,6 +248,20 @@ class GameEngine:
             self.render_buffer.append([(0, self.horse.height), " \\  / "])
             self.render_buffer.append([(0, self.horse.height-1), " [--] "])
             self.render_buffer.append([(0, self.horse.height-2), "\\  [=]"])
+
+    def _MoveObstacle(self):
+        for ob in self.live_obstacles:
+            if ob.size == 1:
+                self.render_buffer.append([(ob.left_most, self.console_H-2), "/\\ "])
+            elif ob.size == 2:
+                self.render_buffer.append([(ob.left_most, self.console_H-2), "/==\\ "])
+                self.render_buffer.append([(ob.left_most+1, self.console_H-3), "/\\ "])
+            else: # size == 3
+                self.render_buffer.append([(ob.left_most, self.console_H-2), "/====\\ "])
+                self.render_buffer.append([(ob.left_most+1, self.console_H-3), "/==\\ "])
+                self.render_buffer.append([(ob.left_most+2, self.console_H-4), "/\\ "])
+            ob.right_most -= 1
+            ob.left_most -= 1
 
     # handle keyboard input
     def PollKeyEvents(self):
