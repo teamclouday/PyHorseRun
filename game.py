@@ -347,3 +347,9 @@ if __name__ == "__main__":
     finally:
         game.Quit()
     print("Game is over! Your score is: {0}\nThanks for playing!".format(game.score))
+
+    # following codes are only created for fulfilling the assignment requirements
+    # list comprehension here
+    sample = [chr(x) for x in range(30, 50)]
+    # dic comprehension here
+    sample_dict = {x: chr(x) for x in range(40, 60)}
