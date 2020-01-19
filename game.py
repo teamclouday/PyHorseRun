@@ -257,13 +257,19 @@ class GameEngine:
             self.horse.height -= 1
             self.render_buffer.append([(0, self.horse.height), " \\  /"])
             self.render_buffer.append([(0, self.horse.height-1), " [--] "])
-            self.render_buffer.append([(0, self.horse.height-2), "\\  [=] "])
+            if self.horse.height == self.console_H-7:
+                self.render_buffer.append([(0, self.horse.height-2), "\\  [=] "])
+            else:
+                self.render_buffer.append([(0, self.horse.height-2), "_  [=] "])
         else: # move down
             self.render_buffer.append([(0, self.horse.height-2), 6*" "])
             self.horse.height += 1
             self.render_buffer.append([(0, self.horse.height), " \\  / "])
             self.render_buffer.append([(0, self.horse.height-1), " [--] "])
-            self.render_buffer.append([(0, self.horse.height-2), "\\  [=]"])
+            if self.horse.height == self.console_H-2:
+                self.render_buffer.append([(0, self.horse.height-2), "\\  [=]"])
+            else:
+                self.render_buffer.append([(0, self.horse.height-2), "|  [=]"])
 
     # helper function to move each obstacle 1 distance left
     def _MoveObstacle(self):
