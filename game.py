@@ -14,8 +14,6 @@ try:
     from ctypes import wintypes
     import msvcrt
 except Exception:
-    #import termios
-    #import tty
     import curses
 
 # helper class to make os specific calls easier
@@ -288,14 +286,18 @@ class GameEngine:
             # first check with the nearest obstacle
             ob = self.live_obstacles[0]
             h = self.console_H - 2 - self.horse.height
-            if h <= ob.size:
-                if ob.left_most <= (4-h):
+            if h < ob.size:
+                if ob.left_most <= (4-h) and ob.left_most > -(ob.size):
+                    return True
+                elif ob.right_most > h and ob.left_most <= -(ob.size):
                     return True
             if len(self.live_obstacles) >= 2:
                 # next check with second nearest obstacle
                 ob = self.live_obstacles[1]
-                if h <= ob.size:
-                    if ob.left_most <= (4-h):
+                if h < ob.size:
+                    if ob.left_most <= (4-h) and ob.left_most > -(ob.size):
+                        return True
+                    elif ob.right_most > h and ob.left_most <= -(ob.size):
                         return True
         return False
 
