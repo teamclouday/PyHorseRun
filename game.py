@@ -325,7 +325,7 @@ class GameEngine:
 
         if ch == self.key_quit:
             self.playable = False
-        elif ch == self.key_jump:
+        elif ch == self.key_jump and self.horse.height == self.console_H-2:
             self.horse.jump = True
 
     # do the clean up and restore environment
