@@ -123,6 +123,7 @@ class GameEngine:
         self.live_obstacles = [] # here stores all the live obstacles
         self.time_tick = time.process_time()
         self.speed_tick = time.process_time()
+        global FRAME_PER_SECOND
         self.fps = FRAME_PER_SECOND
 
     # get environment information
