@@ -123,6 +123,7 @@ class GameEngine:
         self.live_obstacles = [] # here stores all the live obstacles
         self.time_tick = time.process_time()
         self.speed_tick = time.process_time()
+        self.fps = FRAME_PER_SECOND
 
     # get environment information
     def SetUpEnv(self):
@@ -163,8 +164,6 @@ class GameEngine:
     # render the scene to the console
     # or simply update the scene
     def Render(self):
-        # reference the var stored in global
-        global FRAME_PER_SECOND
         for task in self.render_buffer:
             w, h = task[0]
             string = task[1]
@@ -181,7 +180,7 @@ class GameEngine:
         self.console_helper.MoveCursor((0, 0))
         delta = time.process_time() - self.time_tick
         self.time_tick = time.process_time()
-        time.sleep(1 / FRAME_PER_SECOND - delta)
+        time.sleep(1 / self.fps - delta)
 
     # update by game logic
     def Update(self):
@@ -250,11 +249,10 @@ class GameEngine:
         # update the time ticks
         # every 5 seconds, speed up the game
         # also limit the max FPS
-        global FRAME_PER_SECOND
-        if FRAME_PER_SECOND < 40:
+        if self.fps < 40:
             if time.process_time() - self.speed_tick > 5:
                 self.speed_tick = time.process_time()
-                FRAME_PER_SECOND += 2
+                self.fps += 2
 
         # if using curses, then need to draw the ground every frame
         if os.name != "nt":
