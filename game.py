@@ -339,7 +339,7 @@ class GameEngine:
 if __name__ == "__main__":
     # get user defined game difficulty:
     diff = input("Please enter a difficulty from 1 to 3\nOr game will assign a random difficulty\n")
-    if diff not in "123":
+    if diff not in "123" or diff == "":
         diff = random.randint(1, 3) # if input is not valid, then random pick one difficulty
     else:
         diff = int(diff[0])
